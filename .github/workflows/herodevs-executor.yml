@@ -27,7 +27,7 @@ jobs:
         env:
           TOKEN: ${{ steps.token.outputs.token }}
         run: |
-          RESPONSE=$(curl -sS -w '\n%{http_code}' -X POST "https://encroach-skies-flock.ngrok-free.dev/evergreen/api/executors/runs/claim" \
+          RESPONSE=$(curl -sS -w '\n%{http_code}' -X POST "https://encroach-skies-flock.ngrok-free.dev/evergreen/evergreen/api/executors/runs/claim" \
             -H "Authorization: Bearer $TOKEN")
           STATUS=$(echo "$RESPONSE" | tail -1)
           BODY=$(echo "$RESPONSE" | sed '$d')
@@ -68,7 +68,7 @@ jobs:
           RUN_ID: ${{ steps.claim.outputs.run_id }}
         run: |
           jq -n --rawfile content package-lock.json '{content: $content}' | \
-            curl -sS -X POST "https://encroach-skies-flock.ngrok-free.dev/evergreen/api/executors/runs/$RUN_ID/lockfile" \
+            curl -sS -X POST "https://encroach-skies-flock.ngrok-free.dev/evergreen/evergreen/api/executors/runs/$RUN_ID/lockfile" \
               -H "Authorization: Bearer $TOKEN" \
               -H "Content-Type: application/json" \
               -d @-
@@ -83,7 +83,7 @@ jobs:
           if [ -f package-lock.json ]; then
             COUNT=$(jq '.packages | length' package-lock.json 2>/dev/null || echo 0)
           fi
-          curl -sS -X POST "https://encroach-skies-flock.ngrok-free.dev/evergreen/api/executors/runs/$RUN_ID/progress" \
+          curl -sS -X POST "https://encroach-skies-flock.ngrok-free.dev/evergreen/evergreen/api/executors/runs/$RUN_ID/progress" \
             -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json" \
             -d "{\"progress\":\"Resolved $COUNT dependencies. Building an SBOM to submit.\"}"
@@ -91,7 +91,7 @@ jobs:
       - name: Generate an SBOM
         if: steps.claim.outputs.claimed == 'true'
         run: |
-          npm install --no-save --no-audit --no-fund --ignore-scripts @cyclonedx/cdxgen@12.5.1
+          npm install --no-save --no-audit --no-fund --ignore-scripts --legacy-peer-deps @cyclonedx/cdxgen@12.5.1
           cat > generate-sbom.mjs <<'NODE_SCRIPT'
           import { writeFileSync } from 'node:fs'
           import { createBom } from '@cyclonedx/cdxgen'
@@ -176,7 +176,7 @@ jobs:
         run: |
           COMMIT=$(git rev-parse HEAD)
           jq -n --rawfile content sbom.json --arg commit "$COMMIT" '{content: $content, claimedCommit: $commit}' \
-            | curl -sS -X POST "https://encroach-skies-flock.ngrok-free.dev/evergreen/api/executors/runs/$RUN_ID/sbom" \
+            | curl -sS -X POST "https://encroach-skies-flock.ngrok-free.dev/evergreen/evergreen/api/executors/runs/$RUN_ID/sbom" \
               -H "Authorization: Bearer $TOKEN" \
               -H "Content-Type: application/json" \
               -d @-
